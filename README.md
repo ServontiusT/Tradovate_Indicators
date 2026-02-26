@@ -24,3 +24,10 @@ This indicator plots the Volume, Delta and Cumulative Delta for each candle seri
 This indicator shows only the Volume and Delta of an individual Candlestick series, however it plots it to the High of each Candle. This is an extension to DeltaGrid.js after seeing a similar implementation in Quantower. Unlike DeltaGrid.js, there are settings to adjust the size of the text as well as adjust the distance above the candle High.
 
 ![Volume Delta Candle Info Screenshot](images/VolumeDeltaCandleInfo.png)
+
+### PointOfControl.js
+**About**
+
+Draws the "Point of Control" based on the BidxAsk volume. Currently the box is drawn at a price consistent with other platforms (Quantower, Motivewave), however, the display on Tradovate's BidxAsk Footprint chart is still slightly off. 
+
+![Point of Control](images/PointOfControl.png)
