@@ -1,5 +1,5 @@
 // ============================================================
-//  Point of Control (POC) Boxes — Current Session Only
+//  Point of Control (POC) Current Session Only
 //  For Tradovate Custom Indicators
 //
 //  Draws a filled box at the highest-volume price level (POC)
@@ -83,10 +83,7 @@ function findPOC(d) {
 
 class PointOfControl {
     init() {
-        // Prefer the instrument's actual tick size; fall back to user param.
-        this.tickSize = (this.contractInfo && this.contractInfo.tickSize)
-            ? this.contractInfo.tickSize
-            : this.props.tickSize;
+        // nothing to initialize
     }
 
     map(d) {
@@ -99,37 +96,26 @@ class PointOfControl {
         const pocPrice = findPOC(d);
         if (pocPrice === null) return {};
 
-        const tick    = this.tickSize;
-        const color   = this.props.pocColor;
-        const opacity = this.props.opacity / 100;  // stored as 0-100 integer
-        const barIdx  = d.index();
+        const color     = this.props.pocColor;
+        const lineWidth = this.props.lineWidth;
+        const barIdx    = d.index();
 
-        // Four corners of the box in price/bar-index domain units.
-        // Using Polygon avoids the Rectangle's size ambiguity (size only
-        // accepts px() values, not du()), giving exact tick-level alignment.
-        const corners = [
+        // A two-point "degenerate" polygon drawn only as a contour — this
+        // renders as a horizontal line at the POC price using the same
+        // ContourShapes primitive that the working box code uses.
+        const points = [
             { x: du(barIdx - 0.5), y: du(pocPrice) },
             { x: du(barIdx + 0.5), y: du(pocPrice) },
-            { x: du(barIdx + 0.5), y: du(pocPrice + tick) },
-            { x: du(barIdx - 0.5), y: du(pocPrice + tick) },
         ];
 
         return {
             graphics: {
                 items: [
-                    // Filled interior
-                    {
-                        tag: "Shapes",
-                        key: `poc_fill_${barIdx}`,
-                        primitives: [{ tag: "Polygon", points: corners }],
-                        fillStyle: { color, opacity },
-                    },
-                    // Solid border — remains visible at any opacity level
                     {
                         tag: "ContourShapes",
-                        key: `poc_border_${barIdx}`,
-                        primitives: [{ tag: "Polygon", points: corners }],
-                        lineStyle: { color, lineWidth: 1 },
+                        key: `poc_line_${barIdx}`,
+                        primitives: [{ tag: "Polygon", points }],
+                        lineStyle: { color, lineWidth },
                     },
                 ],
             },
@@ -141,7 +127,7 @@ class PointOfControl {
 
 module.exports = {
     name:        "PointOfControl",
-    description: "POC Boxes — Current Session Only",
+    description: "POC",
     calculator:  PointOfControl,
 
     inputType:  meta.InputType.BARS,
@@ -153,10 +139,9 @@ module.exports = {
     },
 
     params: {
-        pocColor:        predef.paramSpecs.color("#FFD700"),        // default: gold
-        opacity:         predef.paramSpecs.number(70, 5, 10),       // 10–100 (%)
-        sessionOpenHour: predef.paramSpecs.number(17, 1, 0),        // local hour for session open
-        tickSize:        predef.paramSpecs.number(0.25, 0.01, 0.01),// fallback if contractInfo unavailable
+        pocColor:        predef.paramSpecs.color("#FFD700"),   // default: gold
+        lineWidth:       predef.paramSpecs.number(1, 1, 1),    // line thickness (px)
+        sessionOpenHour: predef.paramSpecs.number(17, 1, 0),   // local hour for session open
     },
 
     plots: {},
