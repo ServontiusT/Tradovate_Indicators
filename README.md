@@ -31,3 +31,11 @@ This indicator shows only the Volume and Delta of an individual Candlestick seri
 Draws the "Point of Control" based on the BidxAsk volume. Currently the box is drawn at a price consistent with other platforms (Quantower, Motivewave), however, the display on Tradovate's BidxAsk Footprint chart is still slightly off. 
 
 ![Point of Control](images/PointOfControl.png)
+
+### bigtrades.js
+**About**
+
+Plots large trades as filled, size-scaled bubbles at the price and time they printed, colored by aggressor side (buy vs sell) and labeled with the trade size when the label fits inside the bubble. 
+Because map() only receives bars (OHLC, volume, bidVolume, offerVolume, profile - see BarInputEntity in the custom-indicator docs). The raw tick stream (price, size, bid, ask, tick id) exists only in the market-data WebSocket API, which indicators can't reach. This means this indicator must be applied to a 1-Tick chart.
+
+![Big Trades](images/BigTrades.png)
