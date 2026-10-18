@@ -212,12 +212,12 @@ for (const a of ANCHORS) {
 
 module.exports = {
     name: "Vwave",
-    description: "Multi Session VWAP",
+    description: "S1:Multi Session VWAP",
     calculator: vwave,
     inputType: meta.InputType.BARS,
     areaChoice: meta.AreaChoice.OVERLAY,
     requirements: { volumeProfiles: true },
-    tags: ["Servontius"],
+    tags: ["SystemOne"],
     params,
     plots,
     schemeStyles: { dark: styles },

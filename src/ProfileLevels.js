@@ -564,12 +564,12 @@ const SIDE_CHOICES = { historical: "Historical", active: "Active", both: "Both",
 
 module.exports = {
     name: "ProfileLevels",
-    description: "Volume and delta profiles of a previous session, week or month pinned to the left edge of the chart and of the current session pinned to the right edge.",
+    description: "S1:VP",
     calculator: profileLevels,
     inputType: meta.InputType.BARS,
     areaChoice: meta.AreaChoice.OVERLAY,
     requirements: { volumeProfiles: true },
-    tags: ["Servonitus"],
+    tags: ["SystemOne"],
     params: {
         volumeProfiles: predef.paramSpecs.enum(SIDE_CHOICES, "both"),
         deltaProfiles: predef.paramSpecs.enum(SIDE_CHOICES, "both"),

@@ -101,12 +101,12 @@ class delta {
 
 module.exports = {
     name: "Delta",
-    description: "Volume Delta",
+    description: "S1: Volume Delta",
     calculator: delta,
     inputType: meta.InputType.BARS,
     areaChoice: meta.AreaChoice.NEW,
     requirements: { volumeProfiles: true },
-    tags: ["Servontius"],
+    tags: ["SystemOne"],
     params: {
         show:  predef.paramSpecs.enum({ delta: "Delta", cumulative: "Cumulative" }, "delta"),
         reset: predef.paramSpecs.enum({ rth: "RTH Open (08:30 CT)", day: "Trading Day (17:00 CT)" }, "rth"),
