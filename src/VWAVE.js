@@ -25,6 +25,62 @@ function ctClock(ms) {
 const MINUTE = 60000;
 const LONDON_OPEN = 3 * 60, RTH_OPEN = 8 * 60 + 30, GLOBEX_OPEN = 17 * 60;   // CT minutes of day
 
+// ── Daily settlement (CME, CT clock) ───────────────────────────────────
+// The settlement VWAP runs from one daily settlement to the next. The time
+// is picked from the chart's symbol, or set by hand with "Settlement Market".
+const SETTLE_MARKETS = {
+    auto:   "Auto (from symbol)",
+    equity: "Equity index / crypto (15:00)",
+    rates:  "Treasuries / FX (14:00)",
+    energy: "Energy (13:30)",
+    grains: "Grains (13:15)",
+    gold:   "Gold (12:30)",
+    custom: "Custom time",
+};
+const SETTLE_MINUTE = { equity: 15 * 60, rates: 14 * 60, energy: 13 * 60 + 30, grains: 13 * 60 + 15, gold: 12 * 60 + 30 };
+const DEFAULT_SETTLE = SETTLE_MINUTE.equity;
+// Product root -> settlement minute of day (CT).
+const ROOT_SETTLE = {};
+const addRoots = (min, roots) => roots.forEach(r => { ROOT_SETTLE[r] = min; });
+addRoots(SETTLE_MINUTE.equity, ["ES", "MES", "NQ", "MNQ", "YM", "MYM", "RTY", "M2K", "EMD", "NKD",
+                                "BTC", "MBT", "ETH", "MET"]);
+addRoots(SETTLE_MINUTE.rates,  ["ZT", "ZF", "ZN", "TN", "ZB", "UB", "TWE", "10Y", "2YY", "5YY", "30Y",
+                                "6A", "6B", "6C", "6E", "6J", "6M", "6N", "6S", "M6A", "M6B", "M6E", "E7", "J7"]);
+addRoots(SETTLE_MINUTE.energy, ["CL", "MCL", "QM", "NG", "QG", "MNG", "RB", "HO", "BZ"]);
+addRoots(SETTLE_MINUTE.grains, ["ZC", "ZS", "ZW", "ZM", "ZL", "ZO", "KE", "XC", "XK", "XW"]);
+addRoots(SETTLE_MINUTE.gold,   ["GC", "MGC", "QO"]);
+addRoots(12 * 60 + 25,         ["SI", "SIL", "QI"]);    // silver
+addRoots(13 * 60,              ["HG", "MHG", "QC"]);    // copper
+
+// "ESZ6" / "MESZ2026" / "@ES" -> "ES" / "MES" / "ES".
+function rootOf(symbol) {
+    const s = String(symbol).trim().toUpperCase().replace(/^[@/]/, "");
+    const m = /^([A-Z0-9]+?)(?:[FGHJKMNQUVXZ]\d{1,4})?$/.exec(s);
+    return m ? m[1] : "";
+}
+// The chart's symbol, from whichever field Tradovate fills in; "" if none.
+function symbolOf(ci) {
+    if (!ci) return "";
+    const c = [ci.symbol, ci.name, ci.contractName, ci.productName,
+               ci.contract && ci.contract.name, ci.product && ci.product.name];
+    return c.find(x => typeof x === "string" && x) || "";
+}
+// "HH:MM" to minute of day; NaN if not a time.
+function parseHm(text) {
+    const m = /^\s*(\d{1,2}):(\d{2})\s*$/.exec(text || "");
+    return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : NaN;
+}
+function settleMinute(props, ci) {
+    const market = props.setMarket;
+    if (market in SETTLE_MINUTE) return SETTLE_MINUTE[market];
+    if (market === "custom") {
+        const t = parseHm(props.setCustom);
+        return isNaN(t) ? DEFAULT_SETTLE : t;
+    }
+    const root = rootOf(symbolOf(ci));
+    return root in ROOT_SETTLE ? ROOT_SETTLE[root] : DEFAULT_SETTLE;
+}
+
 // "YYYY-MM-DD HH:MM" in CT to epoch ms; 0 if blank or not a date.
 function parseCt(text) {
     const m = /^\s*(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d{2}))?\s*$/.exec(text || "");
@@ -49,9 +105,11 @@ const LINES = [
     { suffix: "Lower3", label: "-3 SD", pair: 3, mult: -3, width: 1, lineStyle: 4 },
 ];
 // Declaration order is drawing order: RTH last, so it sits on top. A slot
-// (open: null) is anchored at the time in its "Time" param.
+// (open: null) is anchored at the time in its "Time" param. The settlement
+// anchor (settle: true) gets its open from settleMinute().
 const ANCHORS = [
     { prefix: "on",  group: "Overnight (ON) VWAP", tag: "ON",      open: GLOBEX_OPEN, color: "#FFFFFF", opensSunday: true,  bands: "none" },
+    { prefix: "set", group: "Settlement VWAP",     tag: "Settle",  open: 0, settle: true, color: "#66BB6A", opensSunday: false, bands: "none" },
     { prefix: "ldn", group: "London VWAP",         tag: "London",  open: LONDON_OPEN, color: "#FFB74D", opensSunday: false, bands: "none" },
     { prefix: "av1", group: "Anchored VWAP 1",     tag: "AVWAP 1", open: null,        color: "#E040FB", opensSunday: false, bands: "none" },
     { prefix: "av2", group: "Anchored VWAP 2",     tag: "AVWAP 2", open: null,        color: "#26C6DA", opensSunday: false, bands: "none" },
@@ -59,7 +117,7 @@ const ANCHORS = [
     { prefix: "rth", group: "RTH VWAP",            tag: "RTH",     open: RTH_OPEN,    color: "#2196F3", opensSunday: false, bands: "one" },
 ];
 // The order the params are listed in.
-const SETTINGS_ORDER = ["ldn", "on", "rth", "av1", "av2", "av3"].map(p => ANCHORS.find(a => a.prefix === p));
+const SETTINGS_ORDER = ["ldn", "on", "rth", "set", "av1", "av2", "av3"].map(p => ANCHORS.find(a => a.prefix === p));
 
 const isSlot = a => a.open === null;
 
@@ -68,11 +126,11 @@ function anchorsOn(a, dow) {
     return a.opensSunday ? dow !== 5 && dow !== 6 : dow !== 6 && dow !== 0;
 }
 // The most recent daily anchor at or before the clock time, as CT minutes since the epoch.
-function anchorOf(a, clock) {
+function anchorOf(a, open, clock) {
     let date = clock.date;
-    if (a.open > clock.minute) date -= 1;
+    if (open > clock.minute) date -= 1;
     while (!anchorsOn(a, (date + 4) % 7)) date -= 1;
-    return date * 1440 + a.open;
+    return date * 1440 + open;
 }
 
 function sdOf(s) {
@@ -105,9 +163,12 @@ function vwapModule(hideable) {
         rthAt(i) { return sums.rth[i]; },
 
         // endMs: when the bar ends (see barEnd), or NaN if not known.
-        map(d, i, props, endMs) {
+        // contractInfo (optional): the calculator's contractInfo, used to
+        // pick the settlement time.
+        map(d, i, props, endMs, contractInfo) {
             const out = {};
             const start = d.timestamp().getTime();
+            const settleOpen = settleMinute(props, contractInfo);
 
             // Trades: the bar's volume profile, and the bar belongs to the
             // period its last moment is in. Bar HLC3 (or a bar with no
@@ -129,7 +190,7 @@ function vwapModule(hideable) {
                 const series = sums[a.prefix];
                 const prev = series[i - 1];
                 let anchor;
-                if (!isSlot(a)) anchor = anchorOf(a, clock);
+                if (!isSlot(a)) anchor = anchorOf(a, a.settle ? settleOpen : a.open, clock);
                 else {
                     const t = slotTime(props[a.prefix + "Time"]);
                     anchor = t > 0 && at >= t ? t : null;          // null: before the anchor, or none
@@ -172,7 +233,7 @@ class vwave {
 
     map(d, i, history) {
         try {
-            return this.vwap.map(d, i, this.props, barEnd(this, history, i));
+            return this.vwap.map(d, i, this.props, barEnd(this, history, i), this.contractInfo);
         } catch (e) {
             return {};                  // skip this bar
         }
@@ -198,6 +259,10 @@ const params = {
 for (const a of SETTINGS_ORDER) {
     params[a.prefix + "Show"] = predef.paramSpecs.bool(!isSlot(a));
     if (isSlot(a)) params[a.prefix + "Time"] = { type: "text", def: "" };   // "YYYY-MM-DD HH:MM" CT
+    if (a.settle) {
+        params.setMarket = predef.paramSpecs.enum(SETTLE_MARKETS, "auto");
+        params.setCustom = { type: "text", def: "15:00" };                  // "HH:MM" CT, for Custom time
+    }
     params[a.prefix + "Bands"] = predef.paramSpecs.enum(BAND_CHOICES, a.bands);
 }
 
